@@ -56,6 +56,56 @@ export const device = async (req,  res) => {
         res.status(500)
     }
 
+    res.status(200).send(aggregated)
+}
+
+
+export const deviceAlerts = async (req,  res) => {
+    const Device = defineLogs(db)
+    const { id } = req.params
+    let aggregated = {}
+
+    try {
+        const data = await Device.findAll({
+            where: {
+                deviceId: id
+            }
+        })
+
+        const logs = data.map(device => device.get({ plain: true }))
+
+        let totalAlerts = 0;
+        let newLogs = []
+        let tempSum = 0
+      
+        for (const log of logs) {
+          let { tempFarenheit, eventDate } = log
+          
+          if (tempFarenheit > 32) {
+            newLogs.push({
+              logDate: eventDate,
+              temperature: tempFarenheit,
+              alert: true
+            })
+            totalAlerts++
+          }
+
+          tempSum += tempFarenheit
+        }
+
+        const mostRecentLogDate = logs[logs.length - 1].eventDate
+        const averageTemperature = tempSum / logs.length
+
+        aggregated = {
+            deviceId: id,
+            averageTemperature,
+            mostRecentLogDate,
+            totalAlerts,
+            logs: newLogs
+        }
+    } catch (error) {
+        res.status(500)
+    }
 
     res.status(200).send(aggregated)
 }
